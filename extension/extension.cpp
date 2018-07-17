@@ -50,6 +50,51 @@ uv_thread_t loop_thread;
 uv_async_t g_async_resolve;
 uv_async_t g_async_write;
 
+class GlobalTimerEvent : public ITimedEvent {
+public:
+	ResultType OnTimer(ITimer *pTimer, void *pData) {
+		if (!g_connect_queue.Empty()) {
+			g_connect_queue.Lock();
+			while (!g_connect_queue.Empty()) {
+				g_connect_queue.Pop()->Connected();
+			}
+			g_connect_queue.Unlock();
+		}
+
+		if (!g_error_queue.Empty()) {
+			g_error_queue.Lock();
+			while (!g_error_queue.Empty()) {
+				error_data_t *err = g_error_queue.Pop();
+
+				err->ctx->OnError(err->err);
+
+				free(err);
+			}
+			g_error_queue.Unlock();
+		}
+
+		if (!g_data_queue.Empty()) {
+			g_data_queue.Lock();
+			while (!g_data_queue.Empty()) {
+				socket_data_t *data = g_data_queue.Pop();
+
+				data->ctx->OnData(data->buf, data->size);
+
+				free(data->buf);
+				free(data);
+			}
+			g_data_queue.Unlock();
+		}
+
+		return Pl_Continue;
+	}
+	void OnTimerEnd(ITimer *pTimer, void *pData) {
+
+	}
+} g_timer;
+
+ITimer *g_ptimer;
+
 AsyncSocket g_AsyncSocket;		/**< Global singleton for extension's main interface */
 
 SMEXT_LINK(&g_AsyncSocket);
@@ -74,41 +119,6 @@ void AsyncSocket::OnHandleDestroy(HandleType_t type, void *object) {
 		AsyncSocketContext *ctx = (AsyncSocketContext *) object;
 
 		delete ctx;
-	}
-}
-
-void OnGameFrame(bool simulating) {
-	if (!g_connect_queue.Empty()) {
-		g_connect_queue.Lock();
-		while(!g_connect_queue.Empty()) {
-			g_connect_queue.Pop()->Connected();
-		}
-		g_connect_queue.Unlock();
-	}
-
-	if (!g_error_queue.Empty()) {
-		g_error_queue.Lock();
-		while(!g_error_queue.Empty()) {
-			error_data_t *err = g_error_queue.Pop();
-
-			err->ctx->OnError(err->err);
-
-			free(err);
-		}
-		g_error_queue.Unlock();
-	}
-
-	if (!g_data_queue.Empty()) {
-		g_data_queue.Lock();
-		while(!g_data_queue.Empty()) {
-			socket_data_t *data = g_data_queue.Pop();
-
-			data->ctx->OnData(data->buf, data->size);
-
-			free(data->buf);
-			free(data);
-		}
-		g_data_queue.Unlock();
 	}
 }
 
@@ -363,7 +373,7 @@ bool AsyncSocket::SDK_OnLoad(char *error, size_t maxlength, bool late) {
 
 	socketHandleType = handlesys->CreateType("AsyncSocket", this, 0, NULL, NULL, myself->GetIdentity(), NULL);
 
-	smutils->AddGameFrameHook(OnGameFrame);
+	g_ptimer = timersys->CreateTimer(&g_timer, 0.1, 0, TIMER_FLAG_REPEAT);
 
 	loop = uv_default_loop();
 
@@ -382,7 +392,7 @@ void AsyncSocket::SDK_OnUnload() {
 
 	uv_loop_close(loop);
 
-	smutils->RemoveGameFrameHook(OnGameFrame);
+	timersys->KillTimer(g_ptimer);
 }
 
 const sp_nativeinfo_t AsyncSocketNatives[] = {

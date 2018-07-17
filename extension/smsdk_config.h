@@ -40,8 +40,8 @@
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"Async Socket Extension"
 #define SMEXT_CONF_DESCRIPTION	"Sample extension to help developers"
-#define SMEXT_CONF_VERSION		"1.0"
-#define SMEXT_CONF_AUTHOR		"Nikki"
+#define SMEXT_CONF_VERSION		"1.1"
+#define SMEXT_CONF_AUTHOR		"Nikki, Gunslinger"
 #define SMEXT_CONF_URL			"http://probablyaserver.com/"
 #define SMEXT_CONF_LOGTAG		"ASYNC"
 #define SMEXT_CONF_LICENSE		"GPL"
@@ -66,7 +66,7 @@
 //#define SMEXT_ENABLE_GAMECONF
 //#define SMEXT_ENABLE_MEMUTILS
 //#define SMEXT_ENABLE_GAMEHELPERS
-//#define SMEXT_ENABLE_TIMERSYS
+#define SMEXT_ENABLE_TIMERSYS
 //#define SMEXT_ENABLE_THREADER
 //#define SMEXT_ENABLE_LIBSYS
 //#define SMEXT_ENABLE_MENUS
